@@ -1,0 +1,74 @@
+#!/usr/bin/env bash
+
+command_found() {
+  command -v "$1" &> /dev/null
+  return $?
+}
+
+copy_to_clipboard() {
+  if [[ "$(uname)" == "Darwin" ]] && command_found "pbcopy"; then
+    echo -n "$1" | pbcopy
+  elif [[ "$(uname)" == "Linux" ]] && command_found "xsel"; then
+    echo -n "$1" | xsel -b
+  elif [[ "$(uname)" == "Linux" ]] && command_found "xclip"; then
+    echo -n "$1" | xclip -i
+  else
+    return 1
+  fi
+}
+
+clear_from_clipboard() {
+  local -r SEC="$1"
+  if [[ "$(uname)" == "Darwin" ]] && is_cmd_exists "pbcopy"; then
+    tmux run-shell -b "sleep $SEC && echo '' | pbcopy"
+  elif [[ "$(uname)" == "Linux" ]] && is_cmd_exists "xsel"; then
+    tmux run-shell -b "sleep $SEC && xsel -c -b"
+  elif [[ "$(uname)" == "Linux" ]] && is_cmd_exists "xclip"; then
+    tmux run-shell -b "sleep $SEC && echo '' | xclip -i"
+  else
+    return 1
+  fi
+}
+
+list_passwords() {
+  pushd "${PASSWORD_STORE_DIR:-$HOME/.password-store}" 1>/dev/null || exit 2
+  find . -type f -name '*.gpg' | sed 's/\.gpg//' | sed 's/^\.\///' | sort
+  popd 1>/dev/null || exit 2
+}
+
+get_password() {
+  pass show "${1}" | head -n1
+}
+
+main() {
+  local -r CURRENT_PANE="$1"
+  local selected
+
+  selected="$(list_passwords | fzf --inline-info --no-multi --header=" Password Manager" --bind=ctrl-i:accept --expect=enter,ctrl-i)"
+
+  if [ $? -gt 0 ]; then
+    echo "Error: Unable to complete command"
+    tmux display-message "#[fg=red]  Faild to get password"
+    read -r
+    exit
+  fi
+
+  key=$(head -1 <<< "$selected")
+  pass=$(tail -n +2 <<< "$selected")
+
+  case $key in
+    enter)
+      tmux display-message "#[fg=yellow] 󰶚 Fetching Password"
+      tmux send-keys -t "$CURRENT_PANE" "$(get_password "$pass")"
+      tmux display-message "#[fg=green]  Password Inserting Successfully" 
+      ;;
+    ctrl-i)
+      tmux display-message "#[fg=yellow] 󰶚 Fetching Password & Inserting In Clipboard"
+      copy_to_clipboard "$(get_password "$pass")"
+      clear_from_clipboard 60
+      tmux display-message "#[fg=green] 󰢨 Password Now In Clipboard & It Will Remove After 30s"
+      ;;
+  esac
+}
+
+main "$@"
