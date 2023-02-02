@@ -67,11 +67,13 @@ main() {
 
   case $key in
     ctrl-i)
+      t serverless
       tmux display-message "#[fg=yellow] 󰶚 Fetching Password..."
       tmux send-keys -t "$CURRENT_PANE" "$(get_password "$pass")"
       tmux display-message "#[fg=green]  Password Inserting Successfully" 
       ;;
     ctrl-y)
+      t serverless
       tmux display-message "#[fg=yellow] 󰶚 Fetching Password & Inserting In Clipboard"
       copy_to_clipboard "$(get_password "$pass")"
       clear_from_clipboard 30
