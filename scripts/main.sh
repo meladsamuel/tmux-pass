@@ -44,12 +44,21 @@ main() {
   local -r CURRENT_PANE="$1"
   local selected
 
-  selected="$(list_passwords | fzf --inline-info --no-multi --header=" Password Manager" --bind=ctrl-i:accept --expect=enter,ctrl-i)"
+  export FZF_DEFAULT_OPTS=$FZF_DEFAULT_OPTS'
+  --color=dark
+  --color=fg:-1,bg:-1,hl:#5fff87,fg+:-1,bg+:-1,hl+:#ffaf5f
+  --color=info:#af87ff,prompt:#5fff87,pointer:#ff87d7,marker:#ff87d7,spinner:#ff87d7
+  '
+
+  selected="$(list_passwords | fzf \
+    --no-info --no-multi \
+    --prompt="󰯄 "  --pointer="󱞪" \
+    --header=$'\nCtrl-y=yank, Ctrl-i=inject' \
+    --bind=ctrl-i:accept --expect=enter,ctrl-i)"
 
   if [ $? -gt 0 ]; then
     echo "Error: Unable to complete command"
-    tmux display-message "#[fg=red]  Faild to get password"
-    read -r
+    tmux display-message "#[fg=red]  Faild To Get Password"
     exit
   fi
 
@@ -57,15 +66,15 @@ main() {
   pass=$(tail -n +2 <<< "$selected")
 
   case $key in
-    enter)
-      tmux display-message "#[fg=yellow] 󰶚 Fetching Password"
+    ctrl-i)
+      tmux display-message "#[fg=yellow] 󰶚 Fetching Password..."
       tmux send-keys -t "$CURRENT_PANE" "$(get_password "$pass")"
       tmux display-message "#[fg=green]  Password Inserting Successfully" 
       ;;
-    ctrl-i)
+    ctrl-y)
       tmux display-message "#[fg=yellow] 󰶚 Fetching Password & Inserting In Clipboard"
       copy_to_clipboard "$(get_password "$pass")"
-      clear_from_clipboard 60
+      clear_from_clipboard 30
       tmux display-message "#[fg=green] 󰢨 Password Now In Clipboard & It Will Remove After 30s"
       ;;
   esac
