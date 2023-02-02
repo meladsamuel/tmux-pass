@@ -54,10 +54,9 @@ main() {
     --no-info --no-multi \
     --prompt="󰯄 "  --pointer="󱞪" \
     --header=$'\nCtrl-y=yank, Ctrl-i=inject' \
-    --bind=ctrl-i:accept --expect=enter,ctrl-i)"
+    --bind=ctrl-i:accept --expect=ctrl-y,ctrl-i)"
 
   if [ $? -gt 0 ]; then
-    echo "Error: Unable to complete command"
     tmux display-message "#[fg=red]  Faild To Get Password"
     exit
   fi
