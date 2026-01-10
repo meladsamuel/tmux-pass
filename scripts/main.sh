@@ -5,6 +5,49 @@ command_found() {
 	return $?
 }
 
+authenticate_user() {
+	# Only authenticate on macOS
+	if [[ "$(uname)" != "Darwin" ]]; then
+		return 0  # Skip on non-macOS
+	fi
+
+	# Check if already authenticated (cached sudo credentials)
+	if sudo -n true 2>/dev/null; then
+		echo "✓ Authenticated"
+		sleep 0.5
+		clear
+		return 0
+	fi
+
+	# Display authentication prompt
+	clear
+	echo ""
+	echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+	echo "  🔐 tmux-pass Authentication"
+	echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+	echo ""
+	echo "Touch ID or enter your password"
+	echo ""
+
+	# Attempt authentication (triggers Touch ID or password prompt)
+	if sudo -v 2>/dev/null; then
+		clear
+		echo "✓ Authentication successful"
+		sleep 0.5
+		clear
+		return 0
+	else
+		clear
+		echo ""
+		echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+		echo "  ❌ Authentication Failed"
+		echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+		echo ""
+		sleep 2
+		return 1
+	fi
+}
+
 copy_to_clipboard() {
 	if [[ "$(uname)" == "Darwin" ]] && command_found "pbcopy"; then
 		echo -n "$1" | pbcopy
@@ -43,6 +86,11 @@ get_password() {
 main() {
 	local -r CURRENT_PANE="$1"
 	local selected
+
+	# Authenticate user before showing password list
+	if ! authenticate_user; then
+		exit 1
+	fi
 
 	selected="$(list_passwords | fzf \
 		--no-info --no-multi --border \
